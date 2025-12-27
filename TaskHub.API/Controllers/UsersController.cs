@@ -59,7 +59,6 @@ namespace TaskHub.API.Controllers
             }
         }
 
-        // POST: api/users (Register endpoint - keep anonymous)
         [HttpPost]
         [AllowAnonymous]
         public IActionResult Create([FromBody] CreateUserDto dto)

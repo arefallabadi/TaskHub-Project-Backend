@@ -51,7 +51,7 @@ namespace TaskHub.API.Services.Implementations
                 PendingTasks = pendingTasks,
                 InProgressTasks = inProgressTasks,
                 CancelledTasks = cancelledTasks,
-                TotalUsers = null // Not shown to users
+                TotalUsers = null
             };
         }
     }

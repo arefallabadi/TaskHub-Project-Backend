@@ -62,7 +62,6 @@ namespace TaskHub.API.Controllers
 
         // POST: api/tasks
         [HttpPost]
-        [Authorize(Roles = "Admin")]
         public IActionResult Create([FromBody] CreateTaskDto dto)
         {
             if (!ModelState.IsValid)

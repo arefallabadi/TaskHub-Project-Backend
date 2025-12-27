@@ -23,19 +23,15 @@ namespace TaskHub.API.Services.Implementations
             _context = context;
         }
 
-        // Get all comments with optional pagination
-        // Admin sees all, User sees comments for their assigned tasks
         public List<CommentDto> GetAll(PaginationParams pagination, int? taskId, int userId, string userRole)
         {
             var query = _context.Comments.Include(c => c.User).Include(c => c.Task).AsQueryable();
 
-            // Filter by task if provided
             if (taskId.HasValue)
             {
                 query = query.Where(c => c.TaskItemId == taskId.Value);
             }
 
-            // User role: only show comments for tasks assigned to them
             if (userRole != "Admin")
             {
                 query = query.Where(c => c.Task != null && c.Task.AssignedUserId == userId);
@@ -56,27 +52,24 @@ namespace TaskHub.API.Services.Implementations
                 .ToList();
         }
 
-        // Create new comment
         public void Create(CommentDto dto, int userId)
         {
             var comment = new Comment
             {
                 Content = dto.Content,
                 TaskItemId = dto.TaskId,
-                AuthorId = userId, // Use userId from JWT, not from DTO
+                AuthorId = userId,
                 CreatedAt = DateTime.UtcNow
             };
 
             _commentRepository.Add(comment);
         }
 
-        // Delete comment - Admin can delete any, User can only delete own comments
         public bool Delete(int id, int userId, string userRole)
         {
             var comment = _context.Comments.Include(c => c.User).FirstOrDefault(c => c.Id == id);
             if (comment == null) return false;
 
-            // User role: can only delete own comments
             if (userRole != "Admin" && comment.AuthorId != userId)
             {
                 throw new UnauthorizedAccessException("You do not have permission to delete this comment.");

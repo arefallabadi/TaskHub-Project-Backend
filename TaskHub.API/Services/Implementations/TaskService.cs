@@ -19,12 +19,10 @@ namespace TaskHub.API.Services.Implementations
             _userRepository = userRepository;
         }
 
-        // Get all tasks with pagination - Admin sees all, User sees only assigned
         public List<TaskDto> GetAll(PaginationParams pagination, int userId, string userRole)
         {
             var allTasks = _taskRepository.GetAll();
 
-            // User role: only show tasks assigned to them
             if (userRole != "Admin")
             {
                 allTasks = allTasks.Where(t => t.AssignedUserId == userId).ToList();
@@ -35,13 +33,11 @@ namespace TaskHub.API.Services.Implementations
                 .Take(pagination.PageSize)
                 .ToList();
 
-            // Get all unique user IDs
             var userIds = tasks.Where(t => t.AssignedUserId.HasValue)
                 .Select(t => t.AssignedUserId.Value)
                 .Distinct()
                 .ToList();
 
-            // Get users in one call
             var users = _userRepository.GetAll()
                 .Where(u => userIds.Contains(u.Id))
                 .ToDictionary(u => u.Id, u => u.Username);
@@ -59,13 +55,11 @@ namespace TaskHub.API.Services.Implementations
             }).ToList();
         }
 
-        // Get task by ID - Admin can see any, User can only see assigned
         public TaskDto? GetById(int id, int userId, string userRole)
         {
             var task = _taskRepository.GetById(id);
             if (task == null) return null;
 
-            // User role: can only view tasks assigned to them
             if (userRole != "Admin" && task.AssignedUserId != userId)
             {
                 throw new UnauthorizedAccessException("You do not have permission to view this task.");
@@ -89,7 +83,6 @@ namespace TaskHub.API.Services.Implementations
             };
         }
 
-        // Create new task - Only Admin can create
         public void Create(CreateTaskDto dto)
         {
             var task = new TaskItem
@@ -103,36 +96,43 @@ namespace TaskHub.API.Services.Implementations
             _taskRepository.Add(task);
         }
 
-        // Update existing task - Admin can update any, User can only update assigned
         public void Update(int id, UpdateTaskDto dto, int userId, string userRole)
         {
             var task = _taskRepository.GetById(id);
-            if (task == null) return;
+            if (task == null) 
+                throw new System.ArgumentException("Task not found.");
 
-            // User role: can only update tasks assigned to them
+            // Check if user has permission to update this task
             if (userRole != "Admin" && task.AssignedUserId != userId)
             {
                 throw new UnauthorizedAccessException("You do not have permission to update this task.");
             }
 
+            // All users (including regular users) can update Title and Description
             if (!string.IsNullOrEmpty(dto.Title))
                 task.Title = dto.Title;
 
             if (!string.IsNullOrEmpty(dto.Description))
                 task.Description = dto.Description;
 
+            // Only Admins can update Status
             if (dto.Status != default(TaskEnum))
+            {
+                if (userRole != "Admin")
+                {
+                    throw new UnauthorizedAccessException("Only Admin can update task status. Regular users can only update title and description.");
+                }
                 task.Status = dto.Status;
+            }
 
-            // Only Admin can change task assignee
+            // Only Admins can update AssignedUserId
             if (dto.AssignedUserId.HasValue)
             {
                 if (userRole != "Admin")
                 {
-                    throw new UnauthorizedAccessException("Only Admin can change task assignee.");
+                    throw new UnauthorizedAccessException("Only Admin can change task assignee. Regular users can only update title and description.");
                 }
 
-                // Validate that the assigned user exists
                 var assignedUser = _userRepository.GetById(dto.AssignedUserId.Value);
                 if (assignedUser == null)
                 {
@@ -145,13 +145,11 @@ namespace TaskHub.API.Services.Implementations
             _taskRepository.Update(task);
         }
 
-        // Delete task - Admin can delete any, User can only delete assigned
         public bool Delete(int id, int userId, string userRole)
         {
             var task = _taskRepository.GetById(id);
             if (task == null) return false;
 
-            // User role: can only delete tasks assigned to them
             if (userRole != "Admin" && task.AssignedUserId != userId)
             {
                 throw new UnauthorizedAccessException("You do not have permission to delete this task.");
@@ -161,14 +159,12 @@ namespace TaskHub.API.Services.Implementations
             return true;
         }
 
-        // Change task status - Admin can change any, User can change assigned
         public void ChangeStatus(int id, TaskEnum status, int userId, string userRole)
         {
             var task = _taskRepository.GetById(id);
             if (task == null)
                 throw new Exception("Task not found");
 
-            // User role: can only change status of tasks assigned to them
             if (userRole != "Admin" && task.AssignedUserId != userId)
             {
                 throw new UnauthorizedAccessException("You do not have permission to change the status of this task.");

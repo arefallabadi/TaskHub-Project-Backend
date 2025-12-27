@@ -21,17 +21,25 @@ namespace TaskHub.API.Services.Implementations
 
         public List<UserDto> GetAll(PaginationParams pagination)
         {
-            return _userRepository.GetAll()
+            var users = _userRepository.GetAll()
                 .Skip((pagination.PageNumber - 1) * pagination.PageSize)
                 .Take(pagination.PageSize)
-                .Select(u => new UserDto
+                .ToList();
+
+            // Get all roles using repository
+            var roles = _roleRepository.GetAll().ToList();
+
+            return users.Select(u =>
+            {
+                var role = roles.FirstOrDefault(r => r.Id == u.RoleId);
+                return new UserDto
                 {
                     Id = u.Id,
                     Username = u.Username,
                     Name = u.Name,
-                    Role = u.Role.Name
-                })
-                .ToList();
+                    Role = role?.Name ?? "User"
+                };
+            }).ToList();
         }
 
         public UserDto? GetById(int id, int currentUserId, string currentUserRole)
@@ -39,34 +47,42 @@ namespace TaskHub.API.Services.Implementations
             var user = _userRepository.GetById(id);
             if (user == null) return null;
 
-            // User role: can only view their own profile
             if (currentUserRole != "Admin" && user.Id != currentUserId)
             {
                 throw new System.UnauthorizedAccessException("You do not have permission to view this user.");
             }
+
+            // Get Role using repository
+            var role = _roleRepository.GetById(user.RoleId);
+            var roleName = role?.Name ?? "User";
 
             return new UserDto
             {
                 Id = user.Id,
                 Username = user.Username,
                 Name = user.Name,
-                Role = user.Role.Name
+                Role = roleName
             };
         }
 
         public void Create(CreateUserDto dto)
         {
+            if (string.IsNullOrWhiteSpace(dto.Password))
+                throw new ArgumentException("Password cannot be empty");
+
             var role = _roleRepository.GetAll()
                 .FirstOrDefault(r => r.Name == dto.Role);
 
             if (role == null)
                 throw new Exception("Role not found");
 
+            var passwordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
+
             var user = new User
             {
                 Username = dto.Username,
                 Name = dto.Name,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+                PasswordHash = passwordHash,
                 RoleId = role.Id
             };
 
@@ -78,7 +94,6 @@ namespace TaskHub.API.Services.Implementations
             var user = _userRepository.GetById(id);
             if (user == null) return false;
 
-            // User role: can only update their own profile
             if (currentUserRole != "Admin" && user.Id != currentUserId)
             {
                 throw new System.UnauthorizedAccessException("You do not have permission to update this user.");
@@ -87,7 +102,13 @@ namespace TaskHub.API.Services.Implementations
             if (!string.IsNullOrWhiteSpace(dto.Name))
                 user.Name = dto.Name;
 
-            // Only Admin can change roles, and cannot change their own role
+            // Update password if provided
+            if (!string.IsNullOrWhiteSpace(dto.Password))
+            {
+                var passwordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
+                user.PasswordHash = passwordHash;
+            }
+
             if (!string.IsNullOrWhiteSpace(dto.Role))
             {
                 if (currentUserRole != "Admin")
@@ -100,7 +121,6 @@ namespace TaskHub.API.Services.Implementations
                     throw new System.ArgumentException("Admin cannot change their own role.");
                 }
 
-                // Validate role value
                 if (dto.Role != "Admin" && dto.Role != "User")
                 {
                     throw new System.ArgumentException("Invalid role. Role must be 'Admin' or 'User'.");

@@ -30,7 +30,7 @@ namespace TaskHub.API.Services.Implementations
 
         public string? GenerateToken(string username, string role, int userId)
         {
-            var key = _configuration["JwtKey"];
+            var key = _configuration["JwtKey"] ?? "ThisIsASecretKeyForJWTToken123!ThisIsASecretKeyForJWTToken123!";
             if (string.IsNullOrEmpty(key)) return null;
 
             var claims = new[]
@@ -54,12 +54,29 @@ namespace TaskHub.API.Services.Implementations
 
         public AuthResponseDto? Login(LoginDto dto)
         {
+            if (string.IsNullOrWhiteSpace(dto.Username) || string.IsNullOrWhiteSpace(dto.Password))
+                return null;
+
             var user = _context.Users
                 .Include(u => u.Role)
                 .FirstOrDefault(u => u.Username == dto.Username);
 
-            if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+            if (user == null)
                 return null;
+
+            if (string.IsNullOrWhiteSpace(user.PasswordHash))
+                return null;
+
+            try
+            {
+                var isValid = BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash);
+                if (!isValid)
+                    return null;
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
 
             var token = GenerateToken(user.Username, user.Role.Name, user.Id);
             if (token == null) return null;
@@ -73,11 +90,9 @@ namespace TaskHub.API.Services.Implementations
 
         public AuthResponseDto? Register(RegisterDto dto)
         {
-            // Check if username already exists
             if (_context.Users.Any(u => u.Username == dto.Username))
                 return null;
 
-            // Get User role (query through Users to find existing role, or use Set<Role>)
             Entities.Role? role = null;
             var existingUserWithUserRole = _context.Users
                 .Include(u => u.Role)
@@ -89,31 +104,33 @@ namespace TaskHub.API.Services.Implementations
             }
             else
             {
-                // Try to find role using Set<Role> (works even if not in DbContext as DbSet)
                 role = _context.Set<Entities.Role>()
                     .FirstOrDefault(r => r.Name == "User");
                 
                 if (role == null)
                 {
-                    // Role doesn't exist, create it
                     role = new Entities.Role { Name = "User" };
                     _context.Set<Entities.Role>().Add(role);
                     _context.SaveChanges();
                 }
             }
 
+            if (string.IsNullOrWhiteSpace(dto.Password))
+                return null;
+
+            var passwordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
+
             var user = new Entities.User
             {
                 Username = dto.Username,
                 Name = dto.Name,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+                PasswordHash = passwordHash,
                 RoleId = role.Id
             };
 
             _context.Users.Add(user);
             _context.SaveChanges();
 
-            // Reload user with role to get role name
             _context.Entry(user).Reference(u => u.Role).Load();
             var roleName = user.Role?.Name ?? "User";
 
