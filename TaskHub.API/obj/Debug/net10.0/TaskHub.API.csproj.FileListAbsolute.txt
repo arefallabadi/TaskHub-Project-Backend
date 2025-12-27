@@ -1,8 +1,0 @@
-C:\Users\Aref Al-Labadi\Desktop\TaskHub_Project\TaskHub.API\obj\Debug\net10.0\TaskHub.API.csproj.AssemblyReference.cache
-C:\Users\Aref Al-Labadi\Desktop\TaskHub_Project\TaskHub.API\obj\Debug\net10.0\rpswa.dswa.cache.json
-C:\Users\Aref Al-Labadi\Desktop\TaskHub_Project\TaskHub.API\obj\Debug\net10.0\TaskHub.API.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\Aref Al-Labadi\Desktop\TaskHub_Project\TaskHub.API\obj\Debug\net10.0\TaskHub.API.AssemblyInfoInputs.cache
-C:\Users\Aref Al-Labadi\Desktop\TaskHub_Project\TaskHub.API\obj\Debug\net10.0\TaskHub.API.AssemblyInfo.cs
-C:\Users\Aref Al-Labadi\Desktop\TaskHub_Project\TaskHub.API\obj\Debug\net10.0\TaskHub.API.csproj.CoreCompileInputs.cache
-C:\Users\Aref Al-Labadi\Desktop\TaskHub_Project\TaskHub.API\obj\Debug\net10.0\TaskHub.API.MvcApplicationPartsAssemblyInfo.cs
-C:\Users\Aref Al-Labadi\Desktop\TaskHub_Project\TaskHub.API\obj\Debug\net10.0\TaskHub.API.MvcApplicationPartsAssemblyInfo.cache
